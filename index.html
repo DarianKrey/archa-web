@@ -213,7 +213,7 @@
                 .then(data => {
                     if (data.mediaItemsSet) {
                         fetch(PICKER_API + '/sessions/' + sessionId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + accessToken } }).catch(() => {});
-                        handleSuccess();
+                        fetchPickedMediaItems(accessToken, sessionId).then(handleSuccess);
                         return;
                     }
                     setTimeout(poll, pollInterval);
@@ -231,17 +231,46 @@
         });
     }
 
-    function handleSuccess() {
+    function fetchPickedMediaItems(accessToken, sessionId) {
+        const all = [];
+        function fetchPage(pageToken) {
+            const url = PICKER_API + '/mediaItems?sessionId=' + encodeURIComponent(sessionId) + (pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : '') + '&pageSize=100';
+            return fetch(url, { headers: { 'Authorization': 'Bearer ' + accessToken } })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.mediaItems) all.push(...data.mediaItems);
+                    if (data.nextPageToken) return fetchPage(data.nextPageToken);
+                    return all;
+                });
+        }
+        return fetchPage();
+    }
+
+    function handleSuccess(pickedItems = []) {
         document.getElementById('onboarding-form').classList.add('hidden');
-        document.getElementById('sub-header').innerText = "Archive linked. Our curators will reach out to you within 24 hours.";
+        const count = pickedItems.length;
+        document.getElementById('sub-header').innerText = count
+            ? count + " photo" + (count !== 1 ? "s" : "") + " linked. Our curators will reach out to you within 24 hours."
+            : "Archive linked. Our curators will reach out to you within 24 hours.";
         const form = document.getElementById('onboarding-form');
         const formData = new FormData(form);
         formData.append('form-name', 'archa-alpha-onboarding');
+        if (pickedItems.length) {
+            formData.append('google-photos-count', String(pickedItems.length));
+            const items = pickedItems.map(item => ({
+                id: item.id,
+                baseUrl: item.mediaFile?.baseUrl,
+                mimeType: item.mediaFile?.mimeType
+            }));
+            formData.append('google-photos-items', JSON.stringify(items));
+            // Viewable links (open in browser; valid ~60 min): one URL per line for easy viewing in Netlify
+            const viewUrls = items.map(i => i.baseUrl ? i.baseUrl + '=w800' : '').filter(Boolean);
+            if (viewUrls.length) formData.append('google-photos-view-urls', viewUrls.join('\n'));
+        }
         const action = form.getAttribute('action') || '/';
         fetch(action, {
             method: "POST",
             body: formData,
-            // Do not set Content-Type; browser sets multipart/form-data with boundary
         })
         .then(() => { /* success */ })
         .catch(err => {
