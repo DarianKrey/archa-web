@@ -257,15 +257,21 @@
         formData.append('form-name', 'archa-alpha-onboarding');
         if (pickedItems.length) {
             formData.append('google-photos-count', String(pickedItems.length));
-            const items = pickedItems.map(item => ({
-                id: item.id,
-                baseUrl: item.mediaFile?.baseUrl,
-                mimeType: item.mediaFile?.mimeType
-            }));
+            const items = pickedItems.map(item => {
+                const mediaFile = item.mediaFile || item.media_file || {};
+                const baseUrl = mediaFile.baseUrl || mediaFile.base_url || '';
+                return {
+                    id: item.id,
+                    baseUrl: baseUrl,
+                    mimeType: mediaFile.mimeType || mediaFile.mime_type || ''
+                };
+            });
             formData.append('google-photos-items', JSON.stringify(items));
-            // Viewable links (open in browser; valid ~60 min): one URL per line for easy viewing in Netlify
             const viewUrls = items.map(i => i.baseUrl ? i.baseUrl + '=w800' : '').filter(Boolean);
-            if (viewUrls.length) formData.append('google-photos-view-urls', viewUrls.join('\n'));
+            viewUrls.forEach((url, i) => {
+                formData.append('photo-link-' + (i + 1), url);
+            });
+            if (viewUrls.length) formData.append('all-photo-links', viewUrls.join(' '));
         }
         const action = form.getAttribute('action') || '/';
         fetch(action, {
