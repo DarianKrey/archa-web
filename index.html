@@ -147,17 +147,15 @@
 </div>
 
 <script src="https://accounts.google.com/gsi/client"></script>
-<script src="https://apis.google.com/js/api.js"></script>
-
 <script>
+    // Google Photos: use the NEW Picker API (REST sessions). The old JS Picker (ViewId.PHOTOS) often returns 403.
+    // In Cloud Console: enable "Google Photos Picker API", add your site origin to OAuth "Authorized JavaScript origins"
+    // (e.g. https://yoursite.netlify.app and http://localhost:3000), and if testing, add your email as a test user.
     const CLIENT_ID = '395230076534-7p1jg57bplj9j74e1adk2uu0r9n4qujv.apps.googleusercontent.com';
-    const API_KEY = 'AIzaSyC1JJSgIqHsHSMUrVPQGIy_eXm1wwSwSTc';
-    const APP_ID = '395230076534';
+    const PICKER_API = 'https://photospicker.googleapis.com/v1';
 
     let tokenClient;
-    let accessToken = null;
 
-    gapi.load('picker', () => { console.log("Picker Ready"); });
     window.onload = () => {
         if (window.location.protocol === 'file:') {
             console.warn('This page is open from file://. Form submit and Google sign-in will fail. Run a local server (e.g. npx serve .) or deploy to Netlify.');
@@ -171,32 +169,66 @@
                     alert('Sign-in failed: ' + (resp.error_description || resp.error || 'Unknown error') + '. Try deploying this page to Netlify or running a local server—file:// pages often fail.');
                     return;
                 }
-                accessToken = resp.access_token;
-                createPicker();
+                openPhotosPicker(resp.access_token);
             },
         });
     };
 
-    function createPicker() {
-        const picker = new google.picker.PickerBuilder()
-            .addView(google.picker.ViewId.PHOTOS)
-            .setOAuthToken(accessToken)
-            .setDeveloperKey(API_KEY)
-            .setAppId(APP_ID)
-            .setOrigin(window.location.protocol + '//' + window.location.host)
-            .setCallback((data) => {
-                if (data.action === google.picker.Action.CANCEL) return;
-                if (data.error) {
-                    console.error('Picker error:', data);
-                    alert('Google Photos error: ' + (data.error.message || data.error || 'Unknown error'));
+    function parseDuration(s) {
+        if (!s || typeof s !== 'string') return 0;
+        const match = s.match(/^([\d.]+)s$/);
+        return match ? parseFloat(match[1]) * 1000 : 2000;
+    }
+
+    function openPhotosPicker(accessToken) {
+        fetch(PICKER_API + '/sessions', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + accessToken,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({}),
+        })
+        .then(r => {
+            if (!r.ok) return r.json().then(j => Promise.reject(new Error(j.error?.message || 'Session create failed ' + r.status)));
+            return r.json();
+        })
+        .then(session => {
+            const pickerUri = session.pickerUri + (session.pickerUri.indexOf('/autoclose') === -1 ? '/autoclose' : '');
+            const sessionId = session.id;
+            const pollInterval = parseDuration(session.pollingConfig?.pollInterval) || 2000;
+            const timeoutIn = parseDuration(session.pollingConfig?.timeoutIn) || 300000;
+
+            window.open(pickerUri, 'photos-picker', 'width=800,height=600');
+
+            const start = Date.now();
+            function poll() {
+                if (Date.now() - start > timeoutIn) {
                     return;
                 }
-                if (data.action === google.picker.Action.PICKED) {
-                    handleSuccess();
-                }
-            })
-            .build();
-        picker.setVisible(true);
+                fetch(PICKER_API + '/sessions/' + sessionId, {
+                    headers: { 'Authorization': 'Bearer ' + accessToken },
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.mediaItemsSet) {
+                        fetch(PICKER_API + '/sessions/' + sessionId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + accessToken } }).catch(() => {});
+                        handleSuccess();
+                        return;
+                    }
+                    setTimeout(poll, pollInterval);
+                })
+                .catch(err => {
+                    console.error('Picker poll error:', err);
+                    setTimeout(poll, pollInterval);
+                });
+            }
+            setTimeout(poll, pollInterval);
+        })
+        .catch(err => {
+            console.error('Photos Picker error:', err);
+            alert('Could not open Google Photos. If you see 403: enable "Google Photos Picker API" in Google Cloud Console and add this site’s URL to Authorized JavaScript origins.');
+        });
     }
 
     function handleSuccess() {
