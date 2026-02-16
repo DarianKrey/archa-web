@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archa | The Aegean Archive</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root { --cream: #fdfbf7; --charcoal: #1a1a1a; --border: #eceae6; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--cream); color: var(--charcoal); margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .container { max-width: 450px; width: 90%; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.03); text-align: center; }
+        h1 { font-family: 'Playfair Display', serif; font-size: 2.5rem; margin-bottom: 10px; font-weight: 400; letter-spacing: -1px; }
+        p { color: #666; line-height: 1.6; margin-bottom: 30px; font-size: 0.95rem; }
+        .form-section { text-align: left; margin-bottom: 25px; }
+        label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: #999; display: block; margin-bottom: 8px; font-weight: 700; }
+        input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; font-size: 1rem; margin-bottom: 15px; background: #fafafa; }
+        .btn { width: 100%; padding: 18px; border-radius: 4px; cursor: pointer; letter-spacing: 2px; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; border: none; margin-bottom: 10px; }
+        #picker-button { background: var(--charcoal); color: white; }
+        .upload-area { border: 2px dashed var(--border); padding: 20px; border-radius: 4px; background: #fafafa; cursor: pointer; }
+        .upload-area p { margin: 0; font-size: 0.8rem; color: #888; }
+        #file-input { display: none; }
+        .divider { margin: 20px 0; font-size: 0.7rem; color: #ccc; text-transform: uppercase; letter-spacing: 2px; display: flex; align-items: center; }
+        .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); margin: 0 10px; }
+        #preview-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 15px; justify-content: center; }
+        .preview-img { width: 50px; height: 50px; object-fit: cover; border-radius: 2px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="main-content">
+    <h1>Archa</h1>
+    <p id="sub-header">Curating your finest moments into a timeless physical archive.</p>
+
+    <form name="archa-alpha-onboarding" method="POST" data-netlify="true" id="onboarding-form" enctype="multipart/form-data" action="/">
+        <div class="form-section">
+            <label>Full Name</label>
+            <input type="text" name="name" id="user-name" placeholder="Darian Allberry" required>
+            <label>Email Address</label>
+            <input type="email" name="email" id="user-email" placeholder="darian@example.com" required>
+        </div>
+
+        <button type="button" id="picker-button" class="btn">ACCESS GOOGLE PHOTOS</button>
+        <div class="divider">or</div>
+        <div class="upload-area" onclick="document.getElementById('file-input').click()">
+            <p>UPLOAD FROM DEVICE</p>
+            <input type="file" name="manual-photos" id="file-input" multiple accept="image/*">
+            <div id="preview-container"></div>
+        </div>
+
+        <button type="submit" id="submit-btn" style="margin-top: 25px; background: #eee; color: #666;" class="btn">SUBMIT ARCHIVE</button>
+    </form>
+</div>
+
+<script src="https://accounts.google.com/gsi/client"></script>
+<script src="https://apis.google.com/js/api.js"></script>
+
+<script>
+    const CLIENT_ID = '395230076534-7p1jg57bplj9j74e1adk2uu0r9n4qujv.apps.googleusercontent.com';
+    const API_KEY = 'AIzaSyC1JJSgIqHsHSMUrVPQGIy_eXm1wwSwSTc';
+    const APP_ID = '395230076534';
+
+    let tokenClient;
+    let accessToken = null;
+
+    gapi.load('picker', () => { console.log("Picker Ready"); });
+    window.onload = () => {
+        if (window.location.protocol === 'file:') {
+            console.warn('This page is open from file://. Form submit and Google sign-in will fail. Run a local server (e.g. npx serve .) or deploy to Netlify.');
+        }
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly',
+            callback: (resp) => {
+                if (resp.error) {
+                    console.error('Google sign-in error:', resp);
+                    alert('Sign-in failed: ' + (resp.error_description || resp.error || 'Unknown error') + '. Try deploying this page to Netlify or running a local server—file:// pages often fail.');
+                    return;
+                }
+                accessToken = resp.access_token;
+                createPicker();
+            },
+        });
+    };
+
+    function createPicker() {
+        const picker = new google.picker.PickerBuilder()
+            .addView(google.picker.ViewId.PHOTOS)
+            .setOAuthToken(accessToken)
+            .setDeveloperKey(API_KEY)
+            .setAppId(APP_ID)
+            .setOrigin(window.location.protocol + '//' + window.location.host)
+            .setCallback((data) => {
+                if (data.action === google.picker.Action.CANCEL) return;
+                if (data.error) {
+                    console.error('Picker error:', data);
+                    alert('Google Photos error: ' + (data.error.message || data.error || 'Unknown error'));
+                    return;
+                }
+                if (data.action === google.picker.Action.PICKED) {
+                    handleSuccess();
+                }
+            })
+            .build();
+        picker.setVisible(true);
+    }
+
+    function handleSuccess() {
+        document.getElementById('onboarding-form').classList.add('hidden');
+        document.getElementById('sub-header').innerText = "Archive linked. Our curators will reach out to you within 24 hours.";
+        const form = document.getElementById('onboarding-form');
+        const formData = new FormData(form);
+        formData.append('form-name', 'archa-alpha-onboarding');
+        const action = form.getAttribute('action') || '/';
+        fetch(action, {
+            method: "POST",
+            body: formData,
+            // Do not set Content-Type; browser sets multipart/form-data with boundary
+        })
+        .then(() => { /* success */ })
+        .catch(err => {
+            console.error('Submit failed:', err);
+            document.getElementById('sub-header').innerText = "Archive linked. If this page didn’t redirect, submit again once the site is live on Netlify.";
+        });
+    }
+
+    document.getElementById('picker-button').addEventListener('click', () => {
+        if (!document.getElementById('user-name').value) return alert("Enter your name first.");
+        tokenClient.requestAccessToken({prompt: 'consent'});
+    });
+
+    document.getElementById('file-input').addEventListener('change', function(e) {
+        const preview = document.getElementById('preview-container');
+        preview.innerHTML = '';
+        Array.from(this.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = document.createElement('img');
+                img.src = event.target.result;
+                img.className = 'preview-img';
+                preview.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+</script>
+
+</body>
+</html>
