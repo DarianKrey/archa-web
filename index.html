@@ -4,18 +4,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Archa | The Aegean Archive</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Inter:wght@300;400&display=swap" rel="stylesheet">
     <style>
-        :root { --cream: #fdfbf7; --charcoal: #1a1a1a; --border: #eceae6; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--cream); color: var(--charcoal); margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .container { max-width: 450px; width: 90%; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.03); text-align: center; }
-        h1 { font-family: 'Playfair Display', serif; font-size: 2.5rem; margin-bottom: 10px; font-weight: 400; letter-spacing: -1px; }
-        p { color: #666; line-height: 1.6; margin-bottom: 30px; font-size: 0.95rem; }
+        :root {
+            --cream: #fdfbf7;
+            --charcoal: #1a1a1a;
+            --border: #eceae6;
+            --aegean: #0c2d48;
+            --aegean-light: #1a4d6f;
+            --serif: 'Cormorant Garamond', Georgia, serif;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--cream); color: var(--charcoal); margin: 0; min-height: 100vh; padding-bottom: 60px; }
+        .header {
+            background: var(--aegean);
+            color: var(--cream);
+            padding: 48px 24px 56px;
+            text-align: center;
+        }
+        .header h1 {
+            font-family: var(--serif);
+            font-size: clamp(2.25rem, 5vw, 3.5rem);
+            font-weight: 400;
+            letter-spacing: 0.08em;
+            margin: 0 0 8px;
+            text-transform: uppercase;
+        }
+        .header .tagline {
+            font-family: var(--serif);
+            font-size: 1.1rem;
+            font-weight: 300;
+            letter-spacing: 0.04em;
+            opacity: 0.92;
+            margin: 0;
+        }
+        .recent-adventures {
+            max-width: 1100px;
+            margin: -28px auto 0;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+        .recent-adventures h2 {
+            font-family: var(--serif);
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--aegean);
+            margin: 0 0 20px;
+        }
+        .adventures-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+        }
+        .adventure-card {
+            aspect-ratio: 4/5;
+            background: linear-gradient(145deg, var(--aegean-light) 0%, var(--aegean) 100%);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .adventure-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .adventure-card .placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(253, 251, 247, 0.4);
+            font-family: var(--serif);
+            font-size: 0.85rem;
+            font-weight: 300;
+            letter-spacing: 0.1em;
+        }
+        .container-wrap { display: flex; justify-content: center; padding: 40px 24px 0; }
+        .container { max-width: 450px; width: 100%; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.06); text-align: center; }
+        h1:not(.header h1) { font-family: var(--serif); font-size: 2.5rem; margin-bottom: 10px; font-weight: 400; letter-spacing: -1px; }
+        .container p { color: #666; line-height: 1.6; margin-bottom: 30px; font-size: 0.95rem; }
         .form-section { text-align: left; margin-bottom: 25px; }
         label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: #999; display: block; margin-bottom: 8px; font-weight: 700; }
         input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; font-size: 1rem; margin-bottom: 15px; background: #fafafa; }
         .btn { width: 100%; padding: 18px; border-radius: 4px; cursor: pointer; letter-spacing: 2px; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; border: none; margin-bottom: 10px; }
-        #picker-button { background: var(--charcoal); color: white; }
+        #picker-button { background: var(--aegean); color: var(--cream); }
         .upload-area { border: 2px dashed var(--border); padding: 20px; border-radius: 4px; background: #fafafa; cursor: pointer; }
         .upload-area p { margin: 0; font-size: 0.8rem; color: #888; }
         #file-input { display: none; }
@@ -28,8 +104,25 @@
 </head>
 <body>
 
-<div class="container" id="main-content">
+<header class="header">
     <h1>Archa</h1>
+    <p class="tagline">The Aegean Archive</p>
+</header>
+
+<section class="recent-adventures">
+    <h2>Recent Adventures</h2>
+    <div class="adventures-grid">
+        <div class="adventure-card"><span class="placeholder">Santorini</span></div>
+        <div class="adventure-card"><span class="placeholder">Crete</span></div>
+        <div class="adventure-card"><span class="placeholder">Mykonos</span></div>
+        <div class="adventure-card"><span class="placeholder">Rhodes</span></div>
+        <div class="adventure-card"><span class="placeholder">Naxos</span></div>
+    </div>
+</section>
+
+<div class="container-wrap">
+<div class="container" id="main-content">
+    <h1>Begin Your Archive</h1>
     <p id="sub-header">Curating your finest moments into a timeless physical archive.</p>
 
     <form name="archa-alpha-onboarding" method="POST" data-netlify="true" id="onboarding-form" enctype="multipart/form-data" action="/">
@@ -50,6 +143,7 @@
 
         <button type="submit" id="submit-btn" style="margin-top: 25px; background: #eee; color: #666;" class="btn">SUBMIT ARCHIVE</button>
     </form>
+</div>
 </div>
 
 <script src="https://accounts.google.com/gsi/client"></script>
