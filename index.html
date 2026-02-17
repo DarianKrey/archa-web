@@ -106,6 +106,28 @@
         #preview-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 15px; justify-content: center; }
         .preview-img { width: 50px; height: 50px; object-fit: cover; border-radius: 2px; }
         .hidden { display: none; }
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(253, 251, 247, 0.95);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .loading-overlay.visible { display: flex; }
+        .loading-overlay .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--aegean);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .loading-overlay p { margin: 0; color: var(--aegean); font-family: var(--serif); font-size: 1.1rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -119,6 +141,11 @@
     <h2 class="category-heading"><a href="travel.html">Travel</a></h2>
     <h2 class="category-heading"><a href="forever.html">Forever</a></h2>
 </section>
+
+<div id="loading-overlay" class="loading-overlay" aria-live="polite">
+    <div class="spinner"></div>
+    <p>Linking your photos…</p>
+</div>
 
 <div class="container-wrap">
 <div class="container" id="main-content">
@@ -141,6 +168,8 @@
             <div id="preview-container"></div>
         </div>
 
+        <input type="hidden" name="view-photos-link" id="view-photos-link-input" value="">
+        <input type="hidden" name="google-photos-count" id="google-photos-count-input" value="">
         <button type="submit" id="submit-btn" class="btn">SUBMIT ARCHIVE</button>
     </form>
 </div>
@@ -199,11 +228,14 @@
             const pollInterval = parseDuration(session.pollingConfig?.pollInterval) || 2000;
             const timeoutIn = parseDuration(session.pollingConfig?.timeoutIn) || 300000;
 
+            var overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.classList.add('visible');
             window.open(pickerUri, 'photos-picker', 'width=800,height=600');
 
             const start = Date.now();
             function poll() {
                 if (Date.now() - start > timeoutIn) {
+                    hideLoading();
                     return;
                 }
                 fetch(PICKER_API + '/sessions/' + sessionId, {
@@ -226,6 +258,7 @@
             setTimeout(poll, pollInterval);
         })
         .catch(err => {
+            hideLoading();
             console.error('Photos Picker error:', err);
             alert('Could not open Google Photos. If you see 403: enable "Google Photos Picker API" in Google Cloud Console and add this site’s URL to Authorized JavaScript origins.');
         });
@@ -246,6 +279,11 @@
         return fetchPage();
     }
 
+    function hideLoading() {
+        var overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.classList.remove('visible');
+    }
+
     function handleSuccess(pickedItems = []) {
         document.getElementById('onboarding-form').classList.add('hidden');
         const count = pickedItems.length;
@@ -253,11 +291,11 @@
             ? count + " photo" + (count !== 1 ? "s" : "") + " linked. Our curators will reach out to you within 24 hours."
             : "Archive linked. Our curators will reach out to you within 24 hours.";
         const form = document.getElementById('onboarding-form');
-        const formData = new FormData(form);
-        formData.append('form-name', 'archa-alpha-onboarding');
+        var viewLinkEl = document.getElementById('view-photos-link-input');
+        var countEl = document.getElementById('google-photos-count-input');
         let viewPhotosPageUrl = '';
         if (pickedItems.length) {
-            formData.append('google-photos-count', String(pickedItems.length));
+            if (countEl) countEl.value = String(pickedItems.length);
             const items = pickedItems.map(item => {
                 const mediaFile = item.mediaFile || item.media_file || {};
                 const baseUrl = mediaFile.baseUrl || mediaFile.base_url || '';
@@ -267,14 +305,23 @@
                     mimeType: mediaFile.mimeType || mediaFile.mime_type || ''
                 };
             });
-            formData.append('google-photos-items', JSON.stringify(items));
             const viewUrls = items.map(i => i.baseUrl ? i.baseUrl + '=w800' : '').filter(Boolean);
             if (viewUrls.length) {
                 try {
                     viewPhotosPageUrl = new URL('thank-you.html', window.location.href).href + '#' + encodeURIComponent(btoa(JSON.stringify(viewUrls)));
-                    formData.append('view-photos-link', viewPhotosPageUrl);
+                    if (viewLinkEl) viewLinkEl.value = viewPhotosPageUrl;
                 } catch (e) {}
             }
+        }
+        const formData = new FormData(form);
+        formData.append('form-name', 'archa-alpha-onboarding');
+        if (pickedItems.length) {
+            const items = pickedItems.map(item => {
+                const mediaFile = item.mediaFile || item.media_file || {};
+                const baseUrl = mediaFile.baseUrl || mediaFile.base_url || '';
+                return { id: item.id, baseUrl: baseUrl, mimeType: mediaFile.mimeType || mediaFile.mime_type || '' };
+            });
+            formData.append('google-photos-items', JSON.stringify(items));
         }
         const action = form.getAttribute('action') || '/';
         fetch(action, {
@@ -282,11 +329,16 @@
             body: formData,
         })
         .then(function() {
-            if (viewPhotosPageUrl) window.location.href = viewPhotosPageUrl;
+            if (viewPhotosPageUrl) {
+                window.location.href = viewPhotosPageUrl;
+            } else {
+                hideLoading();
+            }
         })
         .catch(err => {
             console.error('Submit failed:', err);
-            document.getElementById('sub-header').innerText = "Archive linked. If this page didn’t redirect, submit again once the site is live on Netlify.";
+            hideLoading();
+            document.getElementById('sub-header').innerText = "Archive linked. If this page didn't redirect, submit again once the site is live on Netlify.";
         });
     }
 

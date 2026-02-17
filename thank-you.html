@@ -12,8 +12,8 @@
         h1 { font-family: var(--serif); font-size: 1.75rem; color: var(--aegean); margin: 0 0 8px; }
         p { color: #555; line-height: 1.6; margin: 0 0 24px; }
         .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-top: 24px; }
-        .photo { display: block; border-radius: 8px; overflow: hidden; background: #eee; aspect-ratio: 1; }
-        .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo { display: block; border-radius: 8px; overflow: hidden; background: #eee; aspect-ratio: 1; text-decoration: none; color: var(--aegean); }
+        .photo-placeholder { width: 100%; height: 100%; min-height: 120px; display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 0.95rem; }
         .photo-link { font-size: 0.8rem; margin-top: 6px; }
         .photo-link a { color: var(--aegean); }
         .list { list-style: none; padding: 0; margin: 0; }
@@ -49,21 +49,20 @@
         document.getElementById('message').textContent = 'No photos in this submission.';
         return;
     }
-    document.getElementById('message').textContent = 'You can view and open each photo below. These links expire about 60 minutes after submission.';
+    document.getElementById('message').textContent = 'Click a link below to open each photo in a new tab. These links expire about 60 minutes after submission. (Thumbnails are not shown because Google Photos does not allow embedding from other sites.)';
     var photosEl = document.getElementById('photos');
     var linksEl = document.getElementById('links');
     urls.forEach(function(url, i) {
         var cell = document.createElement('div');
-        var img = document.createElement('img');
-        img.src = url;
-        img.alt = 'Photo ' + (i + 1);
-        img.loading = 'lazy';
         var link = document.createElement('a');
         link.href = url;
         link.target = '_blank';
         link.rel = 'noopener';
-        link.appendChild(img);
         link.className = 'photo';
+        var placeholder = document.createElement('div');
+        placeholder.className = 'photo-placeholder';
+        placeholder.textContent = 'Photo ' + (i + 1);
+        link.appendChild(placeholder);
         cell.appendChild(link);
         var label = document.createElement('div');
         label.className = 'photo-link';
