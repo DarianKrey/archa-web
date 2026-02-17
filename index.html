@@ -255,6 +255,7 @@
         const form = document.getElementById('onboarding-form');
         const formData = new FormData(form);
         formData.append('form-name', 'archa-alpha-onboarding');
+        let viewPhotosPageUrl = '';
         if (pickedItems.length) {
             formData.append('google-photos-count', String(pickedItems.length));
             const items = pickedItems.map(item => {
@@ -268,17 +269,21 @@
             });
             formData.append('google-photos-items', JSON.stringify(items));
             const viewUrls = items.map(i => i.baseUrl ? i.baseUrl + '=w800' : '').filter(Boolean);
-            viewUrls.forEach((url, i) => {
-                formData.append('photo-link-' + (i + 1), url);
-            });
-            if (viewUrls.length) formData.append('all-photo-links', viewUrls.join(' '));
+            if (viewUrls.length) {
+                try {
+                    viewPhotosPageUrl = new URL('thank-you.html', window.location.href).href + '#' + encodeURIComponent(btoa(JSON.stringify(viewUrls)));
+                    formData.append('view-photos-link', viewPhotosPageUrl);
+                } catch (e) {}
+            }
         }
         const action = form.getAttribute('action') || '/';
         fetch(action, {
             method: "POST",
             body: formData,
         })
-        .then(() => { /* success */ })
+        .then(function() {
+            if (viewPhotosPageUrl) window.location.href = viewPhotosPageUrl;
+        })
         .catch(err => {
             console.error('Submit failed:', err);
             document.getElementById('sub-header').innerText = "Archive linked. If this page didn’t redirect, submit again once the site is live on Netlify.";

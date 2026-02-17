@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank you | Archa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root { --cream: #fdfbf7; --charcoal: #1a1a1a; --aegean: #0c2d48; --serif: 'Cormorant Garamond', Georgia, serif; }
+        body { font-family: 'Inter', sans-serif; background: var(--cream); color: var(--charcoal); margin: 0; min-height: 100vh; padding: 40px 24px; box-sizing: border-box; }
+        .wrap { max-width: 700px; margin: 0 auto; }
+        h1 { font-family: var(--serif); font-size: 1.75rem; color: var(--aegean); margin: 0 0 8px; }
+        p { color: #555; line-height: 1.6; margin: 0 0 24px; }
+        .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-top: 24px; }
+        .photo { display: block; border-radius: 8px; overflow: hidden; background: #eee; aspect-ratio: 1; }
+        .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo-link { font-size: 0.8rem; margin-top: 6px; }
+        .photo-link a { color: var(--aegean); }
+        .list { list-style: none; padding: 0; margin: 0; }
+        .list li { margin-bottom: 12px; }
+        .list a { color: var(--aegean); word-break: break-all; }
+        .back { display: inline-block; margin-top: 32px; color: var(--aegean); text-decoration: none; font-size: 0.9rem; }
+        .back:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <h1>Your archive submission</h1>
+    <p id="message">Loading…</p>
+    <div id="photos" class="photos"></div>
+    <ul id="links" class="list" style="display:none;"></ul>
+    <a href="index.html" class="back">← Back to Archa</a>
+</div>
+<script>
+(function() {
+    var hash = window.location.hash.slice(1);
+    if (!hash) {
+        document.getElementById('message').textContent = 'No photos to display. Links expire about 60 minutes after submission.';
+        return;
+    }
+    var urls;
+    try {
+        urls = JSON.parse(decodeURIComponent(atob(hash)));
+    } catch (e) {
+        document.getElementById('message').textContent = 'Invalid or expired link. Photo links expire about 60 minutes after submission.';
+        return;
+    }
+    if (!urls.length) {
+        document.getElementById('message').textContent = 'No photos in this submission.';
+        return;
+    }
+    document.getElementById('message').textContent = 'You can view and open each photo below. These links expire about 60 minutes after submission.';
+    var photosEl = document.getElementById('photos');
+    var linksEl = document.getElementById('links');
+    urls.forEach(function(url, i) {
+        var cell = document.createElement('div');
+        var img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Photo ' + (i + 1);
+        img.loading = 'lazy';
+        var link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.appendChild(img);
+        link.className = 'photo';
+        cell.appendChild(link);
+        var label = document.createElement('div');
+        label.className = 'photo-link';
+        var textLink = document.createElement('a');
+        textLink.href = url;
+        textLink.target = '_blank';
+        textLink.rel = 'noopener';
+        textLink.textContent = 'Open photo ' + (i + 1);
+        label.appendChild(textLink);
+        cell.appendChild(label);
+        photosEl.appendChild(cell);
+        var li = document.createElement('li');
+        var a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = url;
+        li.appendChild(a);
+        linksEl.appendChild(li);
+    });
+    linksEl.style.display = 'block';
+})();
+</script>
+</body>
+</html>
